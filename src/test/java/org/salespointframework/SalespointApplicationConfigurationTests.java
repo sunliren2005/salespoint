@@ -18,6 +18,10 @@ package org.salespointframework;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
+import de.olivergierke.modulith.docs.Documenter;
+import de.olivergierke.moduliths.model.Modules;
+
+import java.io.IOException;
 import java.util.List;
 
 import org.junit.Test;
@@ -56,6 +60,16 @@ public class SalespointApplicationConfigurationTests extends AbstractIntegration
 	@Autowired List<LineItemFilter> lineItemFilter;
 
 	@Test
+	public void verifyModularity() throws IOException {
+
+		Modules modules = Modules.of(SalespointSample.class);
+
+		modules.verify();
+
+		new Documenter(modules).writePlantUml();
+	}
+
+	@Test
 	public void createsApplicationComponents() {
 
 		assertThat(inventory, is(notNullValue()));
@@ -75,4 +89,7 @@ public class SalespointApplicationConfigurationTests extends AbstractIntegration
 		assertThat(impl.getHost(), is("host"));
 		assertThat(impl.getPassword(), is("password"));
 	}
+
+	@EnableSalespoint
+	static class SalespointSample {}
 }

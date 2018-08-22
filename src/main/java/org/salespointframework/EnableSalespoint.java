@@ -15,6 +15,8 @@
  */
 package org.salespointframework;
 
+import de.olivergierke.moduliths.Modulith;
+
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -55,6 +57,7 @@ import org.springframework.context.annotation.Import;
 @Import({ Salespoint.class, SalespointWebAutoConfiguration.class, SalespointSecurityAutoConfiguration.class })
 @EntityScan
 @SpringBootApplication
+@Modulith(additionalPackages = "org.salespointframework", useFullyQualifiedModuleNames = true)
 public @interface EnableSalespoint {
 
 	@Configuration
