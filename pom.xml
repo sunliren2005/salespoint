@@ -3,7 +3,7 @@
 
 	<groupId>de.tudresden.inf.st</groupId>
 	<artifactId>salespoint-framework</artifactId>
-	<version>7.1.0.BUILD-SNAPSHOT</version>
+	<version>7.1.0.GH-163-SNAPSHOT</version>
 
 	<name>Salespoint</name>
 
