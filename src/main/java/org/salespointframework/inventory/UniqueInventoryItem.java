@@ -19,7 +19,8 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.Entity;
-import javax.persistence.ManyToOne;
+import javax.persistence.JoinColumn;
+import javax.persistence.OneToOne;
 
 import org.salespointframework.catalog.Product;
 import org.salespointframework.quantity.Quantity;
@@ -31,18 +32,19 @@ import org.salespointframework.quantity.Quantity;
  */
 @Entity
 @NoArgsConstructor(force = true, access = AccessLevel.PROTECTED)
-public class InventoryItem extends AbstractInventoryItem<InventoryItem> {
+public class UniqueInventoryItem extends AbstractInventoryItem<UniqueInventoryItem> {
 
-	@ManyToOne //
+	@JoinColumn(unique = true) //
+	@OneToOne //
 	private Product product;
 
 	/**
-	 * Creates a new {@link InventoryItem} for the given {@link Product} and {@link Quantity}.
+	 * Creates a new {@link UniqueInventoryItem} for the given {@link Product} and {@link Quantity}.
 	 * 
-	 * @param product the {@link Product} for this {@link InventoryItem}, must not be {@literal null}.
-	 * @param quantity the initial {@link Quantity} for this {@link InventoryItem}, must not be {@literal null}.
+	 * @param product the {@link Product} for this {@link UniqueInventoryItem}, must not be {@literal null}.
+	 * @param quantity the initial {@link Quantity} for this {@link UniqueInventoryItem}, must not be {@literal null}.
 	 */
-	public InventoryItem(Product product, Quantity quantity) {
+	public UniqueInventoryItem(Product product, Quantity quantity) {
 
 		super(product, quantity);
 

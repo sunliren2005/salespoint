@@ -53,7 +53,7 @@ public class InventoryOrderEventListener {
 	private static final String NOT_ENOUGH_STOCK = "Number of items requested by the OrderLine is greater than the number available in the Inventory. Please re-stock.";
 	private static final String NO_INVENTORY_ITEM = "No inventory item with given product indentifier found in inventory. Have you initialized your inventory? Do you need to re-stock it?";
 
-	private final @NonNull Inventory<InventoryItem> inventory;
+	private final @NonNull Inventory<UniqueInventoryItem> inventory;
 	private final @NonNull List<LineItemFilter> filters;
 
 	/**
@@ -113,27 +113,38 @@ public class InventoryOrderEventListener {
 		}
 
 		ProductIdentifier identifier = orderLine.getProductIdentifier();
-		Optional<InventoryItem> inventoryItem = inventory.findByProductIdentifier(identifier);
+		InventoryItems<? extends AbstractInventoryItem<?>> inventoryItem = inventory.findByProductIdentifier(identifier);
 
 		return inventoryItem //
-				.map(it -> it.hasSufficientQuantity(orderLine.getQuantity())) //
-				.map(sufficient -> sufficient ? success(orderLine) : error(orderLine, NOT_ENOUGH_STOCK)) //
-				.orElse(error(orderLine, NO_INVENTORY_ITEM)) //
+				.resolveForUnique(it -> verifyUnique(it, orderLine)) //
+				.orMultiple(__ -> skipped(orderLine));
+	}
+
+	private OrderLineCompletion verifyUnique(Optional<UniqueInventoryItem> item, OrderLine orderLine) {
+
+		return item.map(it -> hasSufficientQuantity(it, orderLine)) //
+				.orElseGet(() -> error(orderLine, NO_INVENTORY_ITEM)) //
 				.onSuccess(it -> {
 
-					inventoryItem //
-							.map(item -> item.decreaseQuantity(it.getQuantity())) //
+					item.map(resolved -> resolved.decreaseQuantity(it.getQuantity())) //
 							.ifPresent(inventory::save);
 				});
 	}
 
-	private InventoryItem updateStockFor(OrderLine orderLine) {
+	private UniqueInventoryItem updateStockFor(OrderLine orderLine) {
 
 		ProductIdentifier productIdentifier = orderLine.getProductIdentifier();
 
 		return inventory.findByProductIdentifier(productIdentifier) //
+				.mapUniqueIfPresent(it -> it.increaseQuantity(orderLine.getQuantity())) //
 				.orElseThrow(() -> new IllegalArgumentException(
-						String.format("Couldn't find InventoryItem for product %s!", productIdentifier))) //
-				.increaseQuantity(orderLine.getQuantity());
+						String.format("Couldn't find InventoryItem for product %s!", productIdentifier)));
+	}
+
+	private static OrderLineCompletion hasSufficientQuantity(UniqueInventoryItem item, OrderLine orderLine) {
+
+		return item.hasSufficientQuantity(orderLine.getQuantity()) //
+				? success(orderLine) //
+				: error(orderLine, NOT_ENOUGH_STOCK);
 	}
 }

@@ -49,7 +49,7 @@ class InventoryOrderEventListenerTests extends AbstractIntegrationTests {
 
 	@Autowired UserAccountManager userAccounts;
 	@Autowired Catalog<Product> products;
-	@Autowired Inventory<InventoryItem> inventory;
+	@Autowired Inventory<UniqueInventoryItem> inventory;
 
 	Product iPad, iPadToFilter, macBook;
 
@@ -70,8 +70,8 @@ class InventoryOrderEventListenerTests extends AbstractIntegrationTests {
 		this.macBook = products.save(new Product("MacBook", Money.of(999, Currencies.EURO)));
 		this.iPadToFilter = products.save(new Product("to filter:iPad", Money.of(499, Currencies.EURO)));
 
-		inventory.save(new InventoryItem(iPad, Quantity.of(10)));
-		inventory.save(new InventoryItem(macBook, Quantity.of(1)));
+		inventory.save(new UniqueInventoryItem(iPad, Quantity.of(10)));
+		inventory.save(new UniqueInventoryItem(macBook, Quantity.of(1)));
 	}
 
 	@Test // #144
@@ -104,7 +104,7 @@ class InventoryOrderEventListenerTests extends AbstractIntegrationTests {
 		listener.on(OrderCancelled.of(order, "No reason!"));
 
 		assertThat(inventory.findByProduct(iPad) //
-				.map(InventoryItem::getQuantity) //
+				.mapUniqueIfPresent(UniqueInventoryItem::getQuantity) //
 		).hasValue(Quantity.of(11));
 	}
 }

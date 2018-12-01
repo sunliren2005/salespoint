@@ -35,7 +35,7 @@ import org.salespointframework.catalog.Cookie;
 import org.salespointframework.catalog.Product;
 import org.salespointframework.core.Currencies;
 import org.salespointframework.inventory.Inventory;
-import org.salespointframework.inventory.InventoryItem;
+import org.salespointframework.inventory.UniqueInventoryItem;
 import org.salespointframework.payment.Cash;
 import org.salespointframework.quantity.Quantity;
 import org.salespointframework.time.Interval;
@@ -60,7 +60,7 @@ class OrderManagerTests extends AbstractIntegrationTests {
 	@Autowired OrderManager<Order> orderManager;
 
 	@Autowired Catalog<Product> catalog;
-	@Autowired Inventory<InventoryItem> inventory;
+	@Autowired Inventory<UniqueInventoryItem> inventory;
 
 	UserAccount user;
 	Order order;
@@ -105,7 +105,7 @@ class OrderManagerTests extends AbstractIntegrationTests {
 	void completesOrderIfAllLineItemsAreAvailableInSufficientQuantity() {
 
 		Cookie cookie = catalog.save(new Cookie("Double choc", Money.of(1.2, Currencies.EURO)));
-		inventory.save(new InventoryItem(cookie, Quantity.of(100)));
+		inventory.save(new UniqueInventoryItem(cookie, Quantity.of(100)));
 		order.addOrderLine(cookie, Quantity.of(10));
 
 		orderManager.payOrder(order);
@@ -116,7 +116,7 @@ class OrderManagerTests extends AbstractIntegrationTests {
 	void failsOrderCompletionIfLineItemsAreNotAvailableInSufficientQuantity() {
 
 		Cookie cookie = catalog.save(new Cookie("Double choc", Money.of(1.2, Currencies.EURO)));
-		inventory.save(new InventoryItem(cookie, Quantity.of(1)));
+		inventory.save(new UniqueInventoryItem(cookie, Quantity.of(1)));
 		order.addOrderLine(cookie, Quantity.of(10));
 
 		orderManager.payOrder(order);

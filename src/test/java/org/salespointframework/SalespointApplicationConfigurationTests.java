@@ -30,7 +30,7 @@ import org.salespointframework.catalog.Catalog;
 import org.salespointframework.catalog.Product;
 import org.salespointframework.core.DataInitializer;
 import org.salespointframework.inventory.Inventory;
-import org.salespointframework.inventory.InventoryItem;
+import org.salespointframework.inventory.UniqueInventoryItem;
 import org.salespointframework.inventory.LineItemFilter;
 import org.salespointframework.order.Order;
 import org.salespointframework.order.OrderManager;
@@ -49,7 +49,7 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
  */
 class SalespointApplicationConfigurationTests extends AbstractIntegrationTests {
 
-	@Autowired Inventory<InventoryItem> inventory;
+	@Autowired Inventory<UniqueInventoryItem> inventory;
 	@Autowired OrderManager<Order> orderManager;
 	@Autowired Catalog<Product> product;
 	@Autowired BusinessTime businessTime;

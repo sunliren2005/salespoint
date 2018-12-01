@@ -15,26 +15,25 @@
  */
 package org.salespointframework.inventory;
 
-import java.util.List;
-
 import org.salespointframework.quantity.Quantity;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.util.Streamable;
 
 /**
  * Example of an {@link Inventory} extension
  * 
  * @author Oliver Gierke
  */
-interface ExtendedInventory extends Inventory<InventoryItem> {
+interface ExtendedInventory extends Inventory<UniqueInventoryItem> {
 
 	/**
-	 * Returns all {@link InventoryItem}s with {@link Quantity}s of the same metric and an amount greater than the one in
-	 * the given {@link Quantity}.
+	 * Returns all {@link UniqueInventoryItem}s with {@link Quantity}s of the same metric and an amount greater than the
+	 * one in the given {@link Quantity}.
 	 * 
 	 * @param quantity must not be {@literal null}.
 	 * @return
 	 */
-	@Query("select i from InventoryItem i where i.quantity.amount > ?#{#quantity.amount} and i.quantity.metric = ?#{#quantity.metric}")
-	List<InventoryItem> findByQuantityGreaterThan(@Param("quantity") Quantity quantity);
+	@Query("select i from #{#entityName} i where i.quantity.amount > ?#{#quantity.amount} and i.quantity.metric = ?#{#quantity.metric}")
+	Streamable<UniqueInventoryItem> findByQuantityGreaterThan(@Param("quantity") Quantity quantity);
 }

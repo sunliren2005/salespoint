@@ -26,23 +26,23 @@ import org.salespointframework.core.Currencies;
 import org.salespointframework.quantity.Quantity;
 
 /**
- * Unit tests for {@link InventoryItem}.
+ * Unit tests for {@link UniqueInventoryItem}.
  *
  * @author Oliver Gierke
  */
-class InventoryItemTests {
+class UniqueInventoryItemTests {
 
 	private static final Quantity TEN = Quantity.of(10);
 	private static final Quantity TWENTY = TEN.add(TEN);
 
 	private Cookie cookie;
-	private InventoryItem item;
+	private UniqueInventoryItem item;
 
 	@BeforeEach
 	void before() {
 
 		cookie = new Cookie("Superkeks", Currencies.ZERO_EURO);
-		item = new InventoryItem(cookie, TEN);
+		item = new UniqueInventoryItem(cookie, TEN);
 	}
 
 	@Test // #34
