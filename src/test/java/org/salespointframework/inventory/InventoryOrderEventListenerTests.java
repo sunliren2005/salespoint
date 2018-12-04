@@ -49,7 +49,7 @@ class InventoryOrderEventListenerTests extends AbstractIntegrationTests {
 
 	@Autowired UserAccountManager userAccounts;
 	@Autowired Catalog<Product> products;
-	@Autowired Inventory<UniqueInventoryItem> inventory;
+	@Autowired FooUniqueInventory<UniqueInventoryItem> inventory;
 
 	Product iPad, iPadToFilter, macBook;
 
@@ -104,7 +104,7 @@ class InventoryOrderEventListenerTests extends AbstractIntegrationTests {
 		listener.on(OrderCancelled.of(order, "No reason!"));
 
 		assertThat(inventory.findByProduct(iPad) //
-				.mapUniqueIfPresent(UniqueInventoryItem::getQuantity) //
+				.map(UniqueInventoryItem::getQuantity) //
 		).hasValue(Quantity.of(11));
 	}
 }

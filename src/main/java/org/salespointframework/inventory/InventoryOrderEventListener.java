@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.salespointframework.catalog.Product;
 import org.salespointframework.catalog.ProductIdentifier;
@@ -35,6 +35,8 @@ import org.salespointframework.order.OrderCompletionReport.OrderLineCompletion;
 import org.salespointframework.order.OrderLine;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.EventListener;
+import org.springframework.data.util.Optionals;
+import org.springframework.data.util.Streamable;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 
@@ -53,8 +55,11 @@ public class InventoryOrderEventListener {
 	private static final String NOT_ENOUGH_STOCK = "Number of items requested by the OrderLine is greater than the number available in the Inventory. Please re-stock.";
 	private static final String NO_INVENTORY_ITEM = "No inventory item with given product indentifier found in inventory. Have you initialized your inventory? Do you need to re-stock it?";
 
-	private final @NonNull Inventory<UniqueInventoryItem> inventory;
+	// private final @NonNull Inventory<UniqueInventoryItem> inventory;
 	private final @NonNull List<LineItemFilter> filters;
+
+	private final @NonNull FooInventory<InventoryItem> fooInventory;
+	private final @NonNull FooUniqueInventory<UniqueInventoryItem> fooUniqueInventory;
 
 	/**
 	 * Invokes {@link Inventory} checks for all {@link OrderLine} of the {@link Order} in the given {@link OrderCompleted}
@@ -71,9 +76,9 @@ public class InventoryOrderEventListener {
 
 		Order order = event.getOrder();
 
-		List<OrderLineCompletion> collect = order.getOrderLines().stream()//
+		List<OrderLineCompletion> collect = order.getOrderLines() //
 				.map(this::verify)//
-				.collect(Collectors.toList());
+				.toList();
 
 		OrderCompletionReport.forCompletions(order, collect) //
 				.onError(OrderCompletionFailure::new);
@@ -94,8 +99,8 @@ public class InventoryOrderEventListener {
 		}
 
 		order.getOrderLines() //
-				.map(this::updateStockFor) //
-				.forEach(inventory::save);
+				.flatMap(this::updateStockFor) //
+				.forEach(fooUniqueInventory::save);
 	}
 
 	/**
@@ -113,32 +118,51 @@ public class InventoryOrderEventListener {
 		}
 
 		ProductIdentifier identifier = orderLine.getProductIdentifier();
-		InventoryItems<? extends AbstractInventoryItem<?>> inventoryItem = inventory.findByProductIdentifier(identifier);
 
-		return inventoryItem //
-				.resolveForUnique(it -> verifyUnique(it, orderLine)) //
-				.orMultiple(__ -> skipped(orderLine));
-	}
+		Optional<UniqueInventoryItem> optional = fooUniqueInventory.findByProductIdentifier(identifier);
 
-	private OrderLineCompletion verifyUnique(Optional<UniqueInventoryItem> item, OrderLine orderLine) {
+		return optional.map(it -> verifyUnique(it, orderLine)) //
+				.orElseGet(() -> {
 
-		return item.map(it -> hasSufficientQuantity(it, orderLine)) //
-				.orElseGet(() -> error(orderLine, NO_INVENTORY_ITEM)) //
-				.onSuccess(it -> {
-
-					item.map(resolved -> resolved.decreaseQuantity(it.getQuantity())) //
-							.ifPresent(inventory::save);
+					Streamable<InventoryItem> items = fooInventory.findByProductIdentifier(identifier);
+					return items.isEmpty() ? error(orderLine, NO_INVENTORY_ITEM) : skipped(orderLine);
 				});
+
+		// fooInventory.findByProductIdentifier(identifier);
+
+		// InventoryItems<? extends AbstractInventoryItem<?>> inventoryItem = inventory.findByProductIdentifier(identifier);
+		//
+		// return inventoryItem //
+		// .resolveForUnique(it -> verifyUnique(it, orderLine)) //
+		// .orMultiple(__ -> skipped(orderLine));
 	}
 
-	private UniqueInventoryItem updateStockFor(OrderLine orderLine) {
+	private OrderLineCompletion verifyUnique(UniqueInventoryItem item, OrderLine orderLine) {
+		return hasSufficientQuantity(item, orderLine)
+
+				// return item.map(it -> hasSufficientQuantity(it, orderLine)) //
+				// .orElseGet(() -> error(orderLine, NO_INVENTORY_ITEM)) //
+				.onSuccess(it -> fooUniqueInventory.save(item.decreaseQuantity(it.getQuantity())));
+	}
+
+	private Stream<UniqueInventoryItem> updateStockFor(OrderLine orderLine) {
 
 		ProductIdentifier productIdentifier = orderLine.getProductIdentifier();
 
-		return inventory.findByProductIdentifier(productIdentifier) //
-				.mapUniqueIfPresent(it -> it.increaseQuantity(orderLine.getQuantity())) //
-				.orElseThrow(() -> new IllegalArgumentException(
-						String.format("Couldn't find InventoryItem for product %s!", productIdentifier)));
+		Optional<UniqueInventoryItem> item = fooUniqueInventory.findByProductIdentifier(productIdentifier);
+		item.map(it -> it.increaseQuantity(orderLine.getQuantity()));
+
+		if (!item.isPresent() && fooInventory.findByProductIdentifier(productIdentifier).isEmpty()) {
+			throw new IllegalArgumentException(
+					String.format("Couldn't find InventoryItem for product %s!", productIdentifier));
+		}
+
+		return Optionals.toStream(item);
+		//
+		// return inventory.findByProductIdentifier(productIdentifier) //
+		// .mapUniqueIfPresent(it -> it.increaseQuantity(orderLine.getQuantity())) //
+		// .orElseThrow(() -> new IllegalArgumentException(
+		// String.format("Couldn't find InventoryItem for product %s!", productIdentifier)));
 	}
 
 	private static OrderLineCompletion hasSufficientQuantity(UniqueInventoryItem item, OrderLine orderLine) {

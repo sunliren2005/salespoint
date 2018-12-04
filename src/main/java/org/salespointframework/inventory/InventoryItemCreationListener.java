@@ -18,16 +18,12 @@ package org.salespointframework.inventory;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
-import java.util.Optional;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.persistence.PrePersist;
 
 import org.salespointframework.catalog.Product;
-import org.springframework.data.util.Streamable;
 import org.springframework.stereotype.Component;
-import org.springframework.util.Assert;
 
 /**
  * @author Oliver Gierke
@@ -39,6 +35,8 @@ class InventoryItemCreationListener {
 	private static final String UNIQUE_ITEM_ALREADY_EXISTS = "Trying to persist unique inventory item for %s. The following item(s) already exist: %s.";
 
 	private final @NonNull Inventory<?> inventory;
+	private final @NonNull FooUniqueInventory<UniqueInventoryItem> fooUniqueInventory;
+	private final @NonNull FooInventory<InventoryItem> fooInventory;
 
 	/**
 	 * Verifies that there's no other {@link UniqueInventoryItem} present for the product that the to be persisted
@@ -48,27 +46,30 @@ class InventoryItemCreationListener {
 	 * @param item must not be {@literal null}.
 	 */
 	@PrePersist
-	public void prePersist(AbstractInventoryItem<?> item) {
+	public void verify(AbstractInventoryItem<?> item) {
 
-		Assert.notNull(item, "Inventory item must not be null!");
+		assertNonUniqueItem(item);
 
-		InventoryItems<?> items = inventory.findByProduct(item.getProduct());
+		if (UniqueInventoryItem.class.isInstance(item)) {
 
-		items.resolveForUnique(Function.identity()) //
-				.orMultiple(existing -> assertNonUniqueItem(item, existing)) //
-				.filter(existing -> existing.isDifferentItemForSameProduct(item)) //
+			InventoryItems<InventoryItem> existing = fooInventory.findByProductIdentifier(item.getProduct().getId());
+
+			if (existing.isEmpty()) {
+				return;
+			}
+
+			throw new IllegalStateException(String.format(UNIQUE_ITEM_ALREADY_EXISTS, item, existing.stream()//
+					.map(Object::toString) //
+					.collect(Collectors.joining(", "))));
+		}
+	}
+
+	private void assertNonUniqueItem(AbstractInventoryItem<?> item) {
+
+		fooUniqueInventory.findByProduct(item.getProduct()) //
+				.filter(it -> it.isDifferentItemForSameProduct(item)) //
 				.ifPresent(existing -> {
 					throw new IllegalStateException(String.format(UNIQUE_ITEM_ALREADY_EXISTS, item, existing));
 				});
-	}
-
-	private static Optional<UniqueInventoryItem> assertNonUniqueItem(AbstractInventoryItem<?> item,
-			Streamable<?> existing) {
-
-		Assert.state(!UniqueInventoryItem.class.isInstance(item), //
-				() -> String.format(UNIQUE_ITEM_ALREADY_EXISTS, item.getProduct(),
-						existing.stream().collect(Collectors.toList())));
-
-		return Optional.empty();
 	}
 }

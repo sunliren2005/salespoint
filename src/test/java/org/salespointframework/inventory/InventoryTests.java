@@ -50,8 +50,8 @@ import org.springframework.transaction.annotation.Transactional;
 @ModuleTest(extraIncludes = "org.salespointframework.catalog")
 class InventoryTests {
 
-	@Autowired Inventory<UniqueInventoryItem> inventory;
-	@Autowired Inventory<InventoryItem> items;
+	@Autowired FooUniqueInventory<UniqueInventoryItem> inventory;
+	@Autowired FooInventory<InventoryItem> items;
 	@Autowired Catalog<Product> catalog;
 	@Autowired EntityManager em;
 
@@ -96,33 +96,30 @@ class InventoryTests {
 	@Test // #34
 	void testFindItemsByProduct() {
 
-		InventoryItems<UniqueInventoryItem> result = inventory.findByProduct(cookie);
+		Optional<UniqueInventoryItem> result = inventory.findByProduct(cookie);
 
-		assertThat(result.isUnique()).isTrue();
-		result.ifUniquePresent(it -> assertThat(it).isEqualTo(item));
+		assertThat(result).hasValue(item);
 	}
 
 	@Test // #34
 	void testFindItemsByProductId() {
 
-		InventoryItems<UniqueInventoryItem> result = inventory.findByProductIdentifier(cookie.getId());
+		Optional<UniqueInventoryItem> result = inventory.findByProductIdentifier(cookie.getId());
 
-		assertThat(result.isUnique()).isTrue();
-		result.ifUniquePresent(it -> assertThat(it).isEqualTo(item));
+		assertThat(result).hasValue(item);
 	}
 
 	@Test // #34
 	void decreasesItemAndPersistsIt() {
 
-		InventoryItems<UniqueInventoryItem> item = inventory.findByProduct(cookie);
+		Optional<UniqueInventoryItem> item = inventory.findByProduct(cookie);
 
-		item.ifUniquePresent(it -> it.decreaseQuantity(Quantity.of(1)));
+		item.map(it -> it.decreaseQuantity(Quantity.of(1)));
 
 		// Trigger another finder to flush
-		InventoryItems<?> result = inventory.findByProductIdentifier(cookie.getId());
+		Optional<UniqueInventoryItem> result = inventory.findByProductIdentifier(cookie.getId());
 
-		assertThat(result.isUnique()).isTrue();
-		result.ifUniquePresent(it -> assertThat(it.getQuantity()).isEqualTo(Quantity.of(9)));
+		assertThat(result).hasValueSatisfying(it -> assertThat(it.getQuantity()).isEqualTo(Quantity.of(9)));
 	}
 
 	/**
@@ -142,14 +139,12 @@ class InventoryTests {
 
 		assertThat(inventory.findItemsOutOfStock()).isEmpty();
 
-		InventoryItems<UniqueInventoryItem> result = inventory.findByProduct(cookie);
+		Optional<UniqueInventoryItem> result = inventory.findByProduct(cookie);
 
-		assertThat(result.isUnique()).isTrue();
-
-		result.ifUniquePresent(item -> {
+		assertThat(result).hasValueSatisfying(item -> {
 
 			item.decreaseQuantity(Quantity.of(10));
-			assertThat(inventory.findItemsOutOfStock(), is(iterableWithSize(1)));
+			assertThat(inventory.findItemsOutOfStock()).containsExactly(item);
 		});
 	}
 
@@ -163,10 +158,12 @@ class InventoryTests {
 
 		InventoryItems<InventoryItem> items = this.items.findByProduct(otherCookie);
 
-		assertThat(items.isUnique()).isFalse();
-		assertThat(items.isEmpty()).isFalse();
 		assertThat(items).containsExactlyInAnyOrder(first, second);
 		assertThat(items.getTotalQuantity()).isEqualTo(Quantity.of(8));
+
+		// assertThat(items.isUnique()).isFalse();
+		// assertThat(items.isEmpty()).isFalse();
+		// assertThat(items).containsExactlyInAnyOrder(first, second);
 	}
 
 	@Test
@@ -200,21 +197,6 @@ class InventoryTests {
 		InventoryItem second = new InventoryItem(otherCookie, Quantity.of(5));
 
 		assertRejectsSecond(first, it -> inventory.save(it), second, it -> items.save(it));
-	}
-
-	@Test
-	void singleInventoryItemIsNotConsideredUnique() throws Exception {
-
-		Cookie otherCookie = catalog.save(new Cookie("Other cookie", Money.of(3, Currencies.EURO)));
-
-		items.save(new InventoryItem(otherCookie, Quantity.of(2)));
-
-		InventoryItems<InventoryItem> result = items.findByProduct(otherCookie);
-
-		assertThat(result.isUnique()).isFalse();
-		assertThat(result.isEmpty()).isFalse();
-		assertThatExceptionOfType(IllegalStateException.class) //
-				.isThrownBy(() -> result.toUnique());
 	}
 
 	private <S extends AbstractInventoryItem<S>, T extends AbstractInventoryItem<T>> void assertRejectsSecond(S first,
